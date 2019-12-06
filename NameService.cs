@@ -1,6 +1,6 @@
    public int ForgotPassword(string email)
         {
-            string procName = "[dbo].[Users_SelectByEmail]";
+            string procName = "[dbo].[NAME_SelectByEmail]";
             int id = 0;
 
 
@@ -21,7 +21,7 @@
         public int ResetPassword(UpdatePassword model)
         {
 
-            string procName = "[dbo].[Users_ResetPassword]";
+            string procName = "[dbo].[NAME_ResetPassword]";
             int id = 0;
 
             _dataProvider.ExecuteNonQuery(procName, delegate (SqlParameterCollection paramCollection)
