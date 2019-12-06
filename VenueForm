@@ -1,0 +1,286 @@
+import React from "react";
+import { Formik, Form, Field } from "formik";
+import { FormGroup, Label, Button } from "reactstrap";
+import * as venuesServices from "../../services/venuesServices";
+import Swal from "sweetalert2";
+import PropTypes from "prop-types";
+import resourceValidationSchema from "./resourceValidationSchema";
+import { Typeahead } from "react-bootstrap-typeahead";
+import FileUpload from "../files/FileUpload";
+import "./Venues.css";
+
+class VenueForm extends React.Component {
+  state = {
+    formData: {
+      id: "",
+      name: "",
+      description: "",
+      locationId: "",
+      url: "",
+      createdBy: "",
+      modifiedBy: "",
+      fileUrl: "",
+      fileId: ""
+    },
+    locationOptions: [],
+    isInitialValid: false
+  };
+  componentDidMount() {
+    if (this.props.match.params.id) {
+      this.setFormData(this.props.location.state);
+      this.getAllLocations();
+    } else {
+      this.getAllLocations();
+    }
+  }
+
+  getAllLocations = () => {
+    venuesServices
+      .getAllLocations(0, 1000)
+      .then(this.onGetLocationSucces)
+      .catch(this.onGetLocationError);
+  };
+
+  onGetLocationSucces = resData => {
+    this.setState({ locationOptions: resData.item.pagedItems });
+  };
+
+  onGetLocationError = response => {
+    _logger(response);
+  };
+
+  setFormData = data => {
+    let formData = {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      url: data.url,
+      fileUrl: data.imageUrl,
+      fileId: data.venueImage.fileId
+    };
+    this.setState(prevState => {
+      return {
+        ...prevState,
+        formData,
+        isInitialValid: true,
+        isEditing: true
+      };
+    });
+  };
+
+  getVenueById = id => {
+    venuesServices
+      .getVenueById(id)
+      .then(this.onGetVenueByIdSuccess)
+      .catch(this.showSaveError);
+  };
+
+  onGetVenueByIdSuccess = result => {
+    this.setFormData(result.item);
+  };
+
+  handleSubmit = formValues => {
+    debugger;
+    let formData = {
+      name: formValues.name,
+      description: formValues.description,
+      locationId: formValues.locationId,
+      url: formValues.url,
+      fileUrl: formValues.fileUrl
+    };
+    _logger("clicked");
+    this.props.location.state
+      ? venuesServices
+          .updateVenue(this.props.location.state.id, formValues)
+          .then(this.showSaveSuccess)
+          .catch(this.showSaveError)
+      : venuesServices
+          .create(formData)
+          .then(this.showSaveSuccess)
+          .catch(this.showSaveError);
+  };
+
+  showSaveSuccess = () => {
+    Swal.fire({
+      type: "success",
+      title: "Succesful"
+    });
+    this.props.history.push("/venues/");
+  };
+
+  showSaveError = () => {
+    Swal.fire({
+      type: "error",
+      title: "Verify all fields are correct",
+      text: "Something went wrong!"
+    });
+  };
+  backToVenueBtn = () => {
+    this.props.history.push("/venues");
+  };
+
+  render() {
+    return (
+      <React.Fragment>
+        <div className="row formStyle">
+          <div className="card col-md-7 formStyle">
+            <Formik
+              enableReinitialize={true}
+              validationSchema={resourceValidationSchema}
+              initialValues={this.state.formData}
+              isInitialValid={this.state.isInitialValid}
+              onSubmit={this.handleSubmit}
+            >
+              {props => {
+                const {
+                  values,
+                  touched,
+                  errors,
+                  handleSubmit,
+                  isValid,
+                  isSubmitting,
+                  setFieldValue
+                } = props;
+                return (
+                  <Form
+                    onSubmit={handleSubmit}
+                    className={"venueForm mt-2 mb-3"}
+                  >
+                    <FormGroup>
+                      <Label>Venue</Label>
+                      <Field
+                        name="name"
+                        type="text"
+                        values={values.name}
+                        placeholder="Name"
+                        autoComplete="off"
+                        className={
+                          errors.name && touched.name
+                            ? "form-control errorMessage"
+                            : "form-control"
+                        }
+                      />
+                      {errors.name && touched.name && (
+                        <span
+                          className="input-feedback"
+                          style={{ color: "red" }}
+                        >
+                          {errors.name}
+                        </span>
+                      )}
+                    </FormGroup>
+                    <FormGroup>
+                      <Label>Description</Label>
+                      <Field
+                        name="description"
+                        type="text"
+                        values={values.description}
+                        placeholder="Description"
+                        autoComplete="off"
+                        className={
+                          errors.description && touched.description
+                            ? "form-control errorMessage"
+                            : "form-control"
+                        }
+                      />
+                      {errors.description && touched.description && (
+                        <span
+                          className="input-feedback"
+                          style={{ color: "red" }}
+                        >
+                          {errors.description}
+                        </span>
+                      )}
+                    </FormGroup>
+                    <FormGroup>
+                      <Typeahead
+                        {...this.state}
+                        id="basic-example"
+                        labelKey={option =>
+                          `${option.lineOne + "" + option.city + ""}`
+                        }
+                        onChange={data =>
+                          setFieldValue("locationId", data[0].id)
+                        }
+                        options={this.state.locationOptions}
+                        placeholder="Type and Choose a Location..."
+                      />
+                    </FormGroup>
+                    <FormGroup>
+                      <Label>URL</Label>
+                      <Field
+                        name="url"
+                        type="text"
+                        values={values.url}
+                        placeholder="http:// or https://"
+                        autoComplete="off"
+                        className={
+                          errors.url && touched.url
+                            ? "form-control errorMessage"
+                            : "form-control"
+                        }
+                      />
+                      {errors.url && touched.url && (
+                        <span
+                          className="input-feedback"
+                          style={{ color: "red" }}
+                        >
+                          {errors.url}
+                        </span>
+                      )}
+                    </FormGroup>
+                    <FormGroup>
+                      <FileUpload
+                        onSuccess={res => {
+                          _logger(values, "====");
+                          setFieldValue("fileUrl", res[0]);
+                        }}
+                      />
+                    </FormGroup>
+                    <Button
+                      className="btn"
+                      id="submit"
+                      type="submit"
+                      name="submit"
+                      disabled={!isValid || isSubmitting}
+                    >
+                      {this.state.isEditing ? "Update" : "Submit"}
+                    </Button>
+                    <Button
+                      type="button"
+                      className="createBtn btn-dark"
+                      style={{ float: "right" }}
+                      onClick={this.backToVenueBtn}
+                    >
+                      Back to Venues
+                    </Button>
+                  </Form>
+                );
+              }}
+            </Formik>
+          </div>
+        </div>
+      </React.Fragment>
+    );
+  }
+}
+
+VenueForm.propTypes = {
+  location: PropTypes.shape({
+    state: PropTypes.shape({
+      id: PropTypes.number,
+      name: PropTypes.string,
+      description: PropTypes.string,
+      url: PropTypes.string,
+      locationId: PropTypes.number,
+      venueImage: PropTypes.shape({ fileId: PropTypes.number })
+    })
+  }),
+  match: PropTypes.shape({
+    params: PropTypes.shape({
+      id: PropTypes.string
+    })
+  }),
+  history: PropTypes.shape({ push: PropTypes.func })
+};
+export default VenueForm;
